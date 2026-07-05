@@ -1050,7 +1050,7 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
                     val mediaCount = result.toIntOrNull() ?: 0
                     if (mediaCount > 0 && !mutePlayToastShown) {
                         mutePlayToastShown = true
-                        toastOnUi(R.string.mute_play_enabled)
+                     //   toastOnUi(R.string.mute_play_enabled)
                     }
                 }
                 val muteJs = """
