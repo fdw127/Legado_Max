@@ -1,0 +1,56 @@
+name: 回退上次上游同步
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_commit:
+        description: '要回退到的 commit SHA（可选，留空则自动回退最近一次上游合并）'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  revert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # 获取完整历史以便查找合并提交
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 配置 Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: 确定要回退的提交
+        id: find_target
+        run: |
+          TARGET="${{ github.event.inputs.target_commit }}"
+          if [ -z "$TARGET" ]; then
+            # 自动查找最近一次合并上游的提交（合并信息包含 "upstream/main"）
+            TARGET=$(git log --merges --grep="upstream/main" -1 --format="%H")
+            if [ -z "$TARGET" ]; then
+              echo "❌ 未找到任何从上游合并的提交，无法自动回退。"
+              exit 1
+            fi
+            echo "🔍 自动找到最近的上游合并提交: $TARGET"
+          else
+            echo "🔍 使用用户指定的提交: $TARGET"
+          fi
+          echo "target=$TARGET" >> $GITHUB_OUTPUT
+
+      - name: 回退合并提交（撤销上游引入的更改）
+        run: |
+          TARGET="${{ steps.find_target.outputs.target }}"
+          # 使用 revert -m 1 保留本地分支历史，撤销合并带来的更改
+          git revert -m 1 $TARGET --no-edit
+          echo "✅ 已生成回退提交，撤销了合并 $TARGET"
+
+      - name: 推送回退结果到远程仓库
+        run: |
+          git push origin HEAD
+          echo "✅ 回退已推送，当前分支已恢复到合并前的状态（但保留了回退记录）"
