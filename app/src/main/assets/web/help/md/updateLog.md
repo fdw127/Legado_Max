@@ -4,20 +4,6 @@
 ### cronet版本: 128.0.6613.40
 ### Kotlin版本: 2.3.10 | Rhino版本: 1.8.1 | Compose版本: 2025.04.01 | Compose UI 版本:  1.7.x | Material3 版本: 1.3.x | okhttp版本: 5.3.2
 
-### 项目继承历史
-##### 原版
-* [Github](https://github.com/gedoor/legado)
-##### Sigma版
-* [Github](https://github.com/Luoyacheng/legado)
-* [Gitee](https://gitee.com/lyc486/legado/releases)
-* [详细日志](https://gitee.com/lyc486/legado/commits/main)
-##### Max版
-* [Github主干youfengknight](https://github.com/youfengknight/Legado_Max)
-* [Github分支GEd520](https://github.com/GEd520/legados)
-* [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
-##### 阅读多版本下载链接(如果网站所有者认为该网站不适合在此处显示，可以通过GitHub联系我进行删除。)
-- [链接1](https://legado.gyks.cf/)
-- [链接2](https://legado.ccccocccc.cc/index.php?i=2)
 
 **2026/07/04**
 - 修复发现页查询对话框加载中退出导致的崩溃
