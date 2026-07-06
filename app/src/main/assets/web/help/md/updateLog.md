@@ -5,10 +5,19 @@
 ### Kotlin版本: 2.3.10 | Rhino版本: 1.8.1 | Compose版本: 2025.04.01 | Compose UI 版本:  1.7.x | Material3 版本: 1.3.x | okhttp版本: 5.3.2
 
 
+**2026/07/06**
+- 回退有关“refactor(explore-show): 重构为ViewPager+Fragment架构
+  ”的更改
+- 拉取来自EdisonYo的修复直链bug
+
+**2026/07/05**
+- 优化首页功能
+- [优化]：同步原版最后的优化
+
 **2026/07/04**
 - 修复发现页查询对话框加载中退出导致的崩溃
 - feat[book-info]: 添加“作者其他作品功能”到书籍详情页，参考NG版本
-- 优化“作者其他作品功能”
+- 优化“作者其他作品”功能
 
 **2026/07/03**
 - 修复因重构ExploreShowActivity 导致回调操作中java.open()函数失效的bug
