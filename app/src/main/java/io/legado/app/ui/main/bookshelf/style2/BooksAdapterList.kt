@@ -18,6 +18,7 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.utils.gone
 import io.legado.app.utils.invisible
 import io.legado.app.utils.splitNotBlank
+import io.legado.app.utils.toTimeAgo
 import io.legado.app.utils.visible
 import io.legado.app.utils.dpToPx
 import splitties.views.onLongClick
@@ -96,6 +97,7 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
             ivLast.visible()
             ivRead.visible()
             upRefresh(this, item)
+            upLastUpdateTime(binding, item)
             // 显示简介和标签（仅在列表视图启用"显示更多信息"时）
             upMoreInfo(binding, item)
         }
@@ -118,6 +120,7 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
                             )
 
                             "refresh" -> upRefresh(this, item)
+                            "lastUpdateTime" -> upLastUpdateTime(binding, item)
                             "moreInfo" -> upMoreInfo(binding, item)
                         }
                     }
@@ -154,7 +157,7 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
             // 显示标签（使用 FlexboxLayout，每个标签有外框）
             if (AppConfig.showMoreInfoInList && AppConfig.showTagsInList) {
                 binding.flexboxTags.visible()
-                updateTagViews(binding.flexboxTags, item.customTag ?: item.kind ?: "")
+                updateTagViews(binding.flexboxTags, item)
             } else {
                 binding.flexboxTags.gone()
             }
@@ -169,16 +172,24 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
             }
         }
 
-        /** 更新 FlexboxLayout 中的标签视图 */
-        private fun updateTagViews(flexboxLayout: FlexboxLayout, tagsText: String) {
+        /** 更新 FlexboxLayout 中的标签视图（先显示字数后显示分类） */
+        private fun updateTagViews(flexboxLayout: FlexboxLayout, item: Book) {
             flexboxLayout.removeAllViews()
-            if (tagsText.isBlank()) return
 
-            // 使用 splitNotBlank 方法分隔标签（与书籍详情页一致，使用逗号和换行符）
-            val tags = tagsText.splitNotBlank(",", "\n")
-            for (tag in tags) {
-                val tagView = createTagView(tag)
-                flexboxLayout.addView(tagView)
+            // 先显示字数标签
+            if (item.wordCount?.isNotBlank() == true) {
+                val wordCountTag = createTagView(item.wordCount!!)
+                flexboxLayout.addView(wordCountTag)
+            }
+
+            // 后显示分类标签
+            val tagsText = item.customTag ?: item.kind ?: ""
+            if (tagsText.isNotBlank()) {
+                val tags = tagsText.splitNotBlank(",", "\n")
+                for (tag in tags) {
+                    val tagView = createTagView(tag)
+                    flexboxLayout.addView(tagView)
+                }
             }
         }
 
@@ -203,6 +214,17 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
                     // 标签之间的间距
                     setMargins(4, 2, 4, 2)
                 }
+            }
+        }
+
+        private fun upLastUpdateTime(binding: ItemBookshelfListBinding, item: Book) {
+            if (AppConfig.showLastUpdateTime && !item.isLocal) {
+                val time = item.latestChapterTime.toTimeAgo()
+                if (binding.tvLastUpdateTime.text != time) {
+                    binding.tvLastUpdateTime.text = time
+                }
+            } else {
+                binding.tvLastUpdateTime.text = ""
             }
         }
 
@@ -234,6 +256,7 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
             ivAuthor.visible()
             ivLast.visible()
             upRefresh(this, item)
+            upLastUpdateTime(binding, item)
         }
 
         fun onBind(item: Book, position: Int, payloads: MutableList<Any>) = binding.run {
@@ -254,6 +277,7 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
                             )
 
                             "refresh" -> upRefresh(this, item)
+                            "lastUpdateTime" -> upLastUpdateTime(binding, item)
                         }
                     }
                 }
@@ -281,6 +305,17 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
                 } else {
                     binding.bvUnread.invisible()
                 }
+            }
+        }
+
+        private fun upLastUpdateTime(binding: ItemBookshelfList2Binding, item: Book) {
+            if (AppConfig.showLastUpdateTime && !item.isLocal) {
+                val time = item.latestChapterTime.toTimeAgo()
+                if (binding.tvLastUpdateTime.text != time) {
+                    binding.tvLastUpdateTime.text = time
+                }
+            } else {
+                binding.tvLastUpdateTime.text = ""
             }
         }
 
