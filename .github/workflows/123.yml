@@ -1,10 +1,10 @@
 name: 手动同步上游（冲突时以上游为准）
 
 on:
-  workflow_dispatch:   # 仅手动触发
+  workflow_dispatch:
 
 permissions:
-  contents: write          # 明确授予推送权限
+  contents: write
 
 jobs:
   sync:
@@ -13,24 +13,38 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0          # 需要完整历史以进行合并
+          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 配置 Git 用户信息
+      - name: 配置 Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: 添加上游仓库
         run: |
-          git remote add upstream https://github.com/EdisonYo/Legado_Max.git
+          git remote add upstream https://github.com/Suml-1/Legado_Max.git
           git fetch upstream main
 
-      - name: 合并上游分支（冲突时强制使用上游版本）
+      - name: 合并上游分支（冲突时自动采用上游版本）
         run: |
-          # 这里假设您要同步到当前分支（通常是 main）
-          # 如果您的默认分支不是 main，请将下面的 main 改为您的分支名
-          git merge upstream/main --strategy-option theirs --no-edit
+          # 尝试合并，但不自动提交
+          if git merge upstream/main --no-commit --no-ff; then
+            # 无冲突，直接提交
+            git commit --no-edit
+          else
+            # 有冲突，自动采用 upstream 版本覆盖所有冲突文件
+            echo "检测到冲突，正在使用上游版本覆盖冲突文件..."
+            # 获取所有未合并（冲突）的文件
+            conflicts=$(git diff --name-only --diff-filter=U)
+            for file in $conflicts; do
+              echo "解决冲突文件: $file (采用 upstream 版本)"
+              git checkout --theirs -- "$file"
+              git add "$file"
+            done
+            # 提交合并
+            git commit --no-edit -m "合并上游分支并自动解决冲突（采用上游版本）"
+          fi
 
       - name: 推送到远程仓库
         run: |
