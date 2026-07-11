@@ -1,4 +1,4 @@
-name: 手动同步上游（冲突时以上游为准，自动解决）
+name: 手动同步上游（保留本地工作流文件）
 
 on:
   workflow_dispatch:
@@ -26,29 +26,41 @@ jobs:
           git remote add upstream https://github.com/Suml-1/Legado_Max.git
           git fetch upstream main
 
-      - name: 合并上游（冲突时强制使用上游版本）
+      - name: 合并上游（保留 .github/workflows/ 目录）
         run: |
-          # 尝试合并，如果失败则自动解决冲突
-          if ! git merge upstream/main --strategy-option theirs --no-edit; then
+          # 尝试合并，但不自动提交（以便在提交前调整文件）
+          if ! git merge upstream/main --strategy-option theirs --no-commit --no-ff; then
             echo "合并发生冲突，开始自动解决..."
-            # 列出所有冲突文件
+            # 处理冲突文件
             git diff --name-only --diff-filter=U | while read file; do
-              # 检查上游是否存在该文件
-              if git ls-tree upstream/main -- "$file" &>/dev/null; then
-                # 上游有该文件 → 使用上游版本（恢复或覆盖）
-                git checkout --theirs -- "$file"
+              # 如果文件在 .github/workflows/ 下，使用本地版本
+              if [[ "$file" == .github/workflows/* ]]; then
+                echo "保留本地版本: $file"
+                git checkout --ours -- "$file"
                 git add "$file"
               else
-                # 上游没有该文件 → 删除（接受上游的删除）
-                git rm --cached "$file" 2>/dev/null || true
+                # 其他文件：上游存在则使用上游，否则删除（接受上游删除）
+                if git ls-tree upstream/main -- "$file" &>/dev/null; then
+                  git checkout --theirs -- "$file"
+                  git add "$file"
+                else
+                  git rm --cached "$file" 2>/dev/null || true
+                fi
               fi
             done
-            # 提交合并（使用默认的合并信息）
-            git commit --no-edit
-            echo "冲突已解决，合并完成。"
           else
-            echo "合并成功，无冲突。"
+            echo "合并无冲突，但强制保留本地 .github/workflows/ 文件"
           fi
+
+          # 无论是否有冲突，强制恢复本地 .github/workflows/ 目录
+          # 防止上游修改了这些文件（即使无冲突）
+          if [ -d ".github/workflows" ]; then
+            git checkout HEAD -- .github/workflows/ 2>/dev/null || true
+            git add .github/workflows/ 2>/dev/null || true
+          fi
+
+          # 提交合并（如果尚未提交）
+          git commit --no-edit || echo "没有待提交的更改"
 
       - name: 推送到远程仓库
         run: |
