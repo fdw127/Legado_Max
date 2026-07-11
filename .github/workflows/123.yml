@@ -1,11 +1,10 @@
-name: 手动同步上游（冲突时以上游为准）
+name: 手动同步上游（冲突时以上游为准，自动解决）
 
 on:
   workflow_dispatch:
 
-permissions:               # ← 注意：必须顶格（与 name 同级），且后面无多余空格
+permissions:
   contents: write
-  workflows: write         # ← workflows 与 contents 对齐
 
 jobs:
   sync:
@@ -13,7 +12,9 @@ jobs:
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
-        # 不指定 token，默认使用 GITHUB_TOKEN（现在已有了 workflows:write 权限）
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 配置 Git
         run: |
@@ -25,19 +26,28 @@ jobs:
           git remote add upstream https://github.com/Suml-1/Legado_Max.git
           git fetch upstream main
 
-      - name: 合并上游分支（冲突时自动采用上游版本）
+      - name: 合并上游（冲突时强制使用上游版本）
         run: |
-          if git merge upstream/main --no-commit --no-ff; then
-            git commit --no-edit
-          else
-            echo "检测到冲突，正在使用上游版本覆盖冲突文件..."
-            conflicts=$(git diff --name-only --diff-filter=U)
-            for file in $conflicts; do
-              echo "解决冲突文件: $file (采用 upstream 版本)"
-              git checkout --theirs -- "$file"
-              git add "$file"
+          # 尝试合并，如果失败则自动解决冲突
+          if ! git merge upstream/main --strategy-option theirs --no-edit; then
+            echo "合并发生冲突，开始自动解决..."
+            # 列出所有冲突文件
+            git diff --name-only --diff-filter=U | while read file; do
+              # 检查上游是否存在该文件
+              if git ls-tree upstream/main -- "$file" &>/dev/null; then
+                # 上游有该文件 → 使用上游版本（恢复或覆盖）
+                git checkout --theirs -- "$file"
+                git add "$file"
+              else
+                # 上游没有该文件 → 删除（接受上游的删除）
+                git rm --cached "$file" 2>/dev/null || true
+              fi
             done
-            git commit --no-edit -m "合并上游分支并自动解决冲突（采用上游版本）"
+            # 提交合并（使用默认的合并信息）
+            git commit --no-edit
+            echo "冲突已解决，合并完成。"
+          else
+            echo "合并成功，无冲突。"
           fi
 
       - name: 推送到远程仓库
