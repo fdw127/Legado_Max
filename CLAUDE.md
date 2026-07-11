@@ -30,11 +30,23 @@ Uses Gradle wrapper (`gradlew.bat` on Windows). JDK 17 required.
 ./gradlew test                      # Unit tests
 ./gradlew connectedAndroidTest      # Instrumented tests
 
+# stop
+./gradlew stop
+
+# Grammar Test
+.\gradlew.bat :app:compileAppMaxDebugKotlin
+
 # Lint
 ./gradlew lint
 
 # Download Cronet native libs (required before first build)
 ./gradlew app:downloadCronet
+
+# 查看DSL语法警告
+# Windows
+gradlew assembleDebug --warning-mode all
+# Mac/Linux
+./gradlew assembleDebug --warning-mode all
 ```
 
 ### Web Frontend (modules/web)

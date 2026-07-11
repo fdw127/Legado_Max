@@ -805,6 +805,7 @@
     <string name="preview">预览</string>
     <string name="text_menu_config">展开文本菜单配置</string>
     <string name="menu_config">菜单配置</string>
+    <string name="menu_highlight_rule">高亮设置</string>
     <string name="text_menu_config_desc">选择您想要显示的菜单项，折叠模式下超出直接显示数量后会显示在溢出菜单</string>
     <string name="text_menu_visible_count">直接显示数量</string>
     <string name="text_menu_visible_count_desc">折叠模式下直接显示 %1$d 个菜单项，超出后放入更多菜单</string>
@@ -1291,7 +1292,7 @@
     <string name="web_service_wake_lock">WebService唤醒锁</string>
     <string name="web_service_wake_lock_summary">开启web服务的时候启用唤醒锁,有些手机开启唤醒锁会被杀后台</string>
     <string name="unsafe_ssl_title">跳过SSL验证</string>
-    <string name="unsafe_ssl_summary">跳过所有网络请求的SSL证书验证，可能遭受中间人攻击，仅在网站证书异常时开启</string>
+    <string name="unsafe_ssl_summary">跳过所有网络请求的SSL证书验证，可能遭受中间人攻击，一般仅在网站证书异常时开启;如果源里访问的ip地址与源URL域名不同，也需开启，比如某些网站可以用ip直连访问</string>
     <string name="need_restart_app">此更改需要重启应用才能生效，是否立即重启？</string>
     <string name="read_aloud_wake_lock">朗读服务唤醒锁</string>
     <string name="read_aloud_wake_lock_summary">开启朗读的时候启用唤醒锁,有些手机开启唤醒锁会被杀后台</string>
@@ -1825,7 +1826,10 @@
     <string name="import_rules">导入规则</string>
     <string name="share_rules">分享规则</string>
     <string name="export_rules">导出规则</string>
+    <string name="import_export_rules">导入 / 导出规则</string>
     <string name="import_from_clipboard">从剪贴板导入</string>
+    <string name="import_from_file">从文件导入</string>
+    <string name="export_to_file">导出到文件</string>
     <string name="cover_gallery">封面图集</string>
     <string name="cover_gallery_summary">管理分组封面图集，可设置为全局默认封面源</string>
 

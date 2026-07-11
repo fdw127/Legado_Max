@@ -13,7 +13,7 @@ import io.legado.app.help.storage.BackupAES
 import io.legado.app.help.storage.BookCacheSelectorConfig
 import io.legado.app.model.BookCover
 import io.legado.app.model.VideoPlay.VIDEO_PREF_NAME
-import io.legado.app.ui.book.read.config.HighlightRuleStore
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleStore
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.GSON
 import io.legado.app.utils.compress.ZipUtils
@@ -181,7 +181,7 @@ object BackupController {
             writeListToJson(appDb.rssStarDao.all, "rssStar.json", webBackupPath)
             writeListToJson(appDb.replaceRuleDao.all, "replaceRule.json", webBackupPath)
             FileUtils.createFileIfNotExist(webBackupPath + File.separator + HighlightRuleStore.backupFileName)
-                .writeText(GSON.toJson(HighlightRuleStore.createBackupData(appCtx)))
+                .writeText(GSON.toJson(HighlightRuleStore.backupData(appCtx)))
             writeListToJson(appDb.readRecordDao.all, "readRecord.json", webBackupPath)
             writeListToJson(appDb.readRecordDao.getAllDetailsList(), "readRecordDetail.json", webBackupPath)
             writeListToJson(appDb.searchKeywordDao.all, "searchHistory.json", webBackupPath)
@@ -465,8 +465,8 @@ object BackupController {
             items.add(
                 BackupItemInfo(
                     fileName = HighlightRuleStore.backupBgDirName,
-                    displayName = "楂樹寒鑳屾櫙鍥剧墖",
-                    description = "楂樹寒瑙勫垯浣跨敤鐨勮嚜瀹氫箟鑳屾櫙鍥剧墖",
+                    displayName = "高亮背景图片",
+                    description = "高亮规则使用的自定义背景图片",
                     count = highlightRuleBgFiles.size,
                     size = highlightRuleBgSize
                 )

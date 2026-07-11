@@ -1,4 +1,4 @@
-package io.legado.app.ui.book.read.config
+package io.legado.app.ui.book.read.config.highlight
 
 import android.graphics.Color
 import android.graphics.PorterDuff
@@ -12,6 +12,7 @@ import android.widget.ArrayAdapter
 import android.widget.SeekBar
 import androidx.annotation.ColorInt
 import androidx.core.widget.doAfterTextChanged
+import androidx.fragment.app.viewModels
 import com.jaredrummler.android.colorpicker.ColorPickerDialog
 import com.jaredrummler.android.colorpicker.ColorPickerDialogListener
 import io.legado.app.R
@@ -28,9 +29,14 @@ import io.legado.app.utils.observeEvent
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
-import io.legado.app.ui.book.read.page.entities.TextLine
 import io.legado.app.ui.file.HandleFileContract
 
+/**
+ * 高亮规则单条编辑弹窗。
+ *
+ * 负责绑定输入控件、颜色选择器、背景图选择器和预览刷新；
+ * 当前编辑规则和分组列表由 `HighlightRuleEditViewModel` 保存。
+ */
 class HighlightRuleEditDialog @JvmOverloads constructor(
     private val sourceRule: HighlightRule? = null,
     private val defaultGroup: String? = null,
@@ -39,19 +45,29 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
 ) : BaseDialogFragment(R.layout.dialog_highlight_rule_edit, true), ColorPickerDialogListener {
 
     private val binding by viewBinding(DialogHighlightRuleEditBinding::bind)
-    private lateinit var editingRule: HighlightRule
-    private lateinit var groupItems: List<String>
+    private val viewModel: HighlightRuleEditViewModel by viewModels()
+    private var editingRule: HighlightRule
+        get() = viewModel.editingRule
+        set(value) {
+            viewModel.editingRule = value
+        }
+    private val groupItems: List<String>
+        get() = viewModel.groupItems
     private var primaryTextColor = 0
     private var secondaryTextColor = 0
     private var accentColor = 0
-    private var isRegexMode = false
+    private var isRegexMode: Boolean
+        get() = viewModel.isRegexMode
+        set(value) {
+            viewModel.isRegexMode = value
+        }
 
     private val selectImageResult = registerForActivityResult(HandleFileContract()) { result ->
         result.uri?.let { uri ->
             // 选择图片时，清除背景颜色
             editingRule.bgColor = null
             val rawPath = RealPathUtil.getPath(requireContext(), uri) ?: uri.toString()
-            val savedPath = TextLine.copyBgImageToInternal(requireContext(), rawPath)
+            val savedPath = HighlightRuleBackgroundManager.copyToInternal(requireContext(), rawPath)
             editingRule.bgImage = savedPath ?: rawPath
             binding.etBgImage.setText(savedPath ?: rawPath)
             updateBgPreview()
@@ -69,11 +85,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         initTheme()
-        editingRule = sourceRule?.copy() ?: HighlightRule(
-            group = defaultGroup ?: HighlightRuleGroupStore.DEFAULT_GROUP,
-            scope = defaultScope
-        )
-        groupItems = HighlightRuleGroupStore.load(requireContext())
+        viewModel.initialize(sourceRule, defaultGroup, defaultScope)
         attachBottomSheetDismiss(
             binding.dragHandle,
             binding.sheetContainer
@@ -82,32 +94,76 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.tvPageTitle.text =
             getString(if (sourceRule == null) R.string.highlight_rule_add else R.string.highlight_rule_edit)
 
-        binding.spGroup.adapter = ArrayAdapter(
+        binding.spGroup.adapter = object : ArrayAdapter<String>(
             requireContext(),
             R.layout.item_text_common,
             groupItems
-        ).apply {
+        ) {
+            override fun getView(position: Int, convertView: android.view.View?, parent: android.view.ViewGroup): android.view.View {
+                val view = super.getView(position, convertView, parent)
+                if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
+                return view
+            }
+            override fun getDropDownView(position: Int, convertView: android.view.View?, parent: android.view.ViewGroup): android.view.View {
+                val view = super.getDropDownView(position, convertView, parent)
+                if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
+                return view
+            }
+        }.apply {
             setDropDownViewResource(R.layout.item_spinner_dropdown)
         }
-        binding.spTarget.adapter = ArrayAdapter(
+        binding.spTarget.adapter = object : ArrayAdapter<String>(
             requireContext(),
             R.layout.item_text_common,
             listOf("作用于全部", "作用于标题", "作用于正文")
-        ).apply {
+        ) {
+            override fun getView(position: Int, convertView: android.view.View?, parent: android.view.ViewGroup): android.view.View {
+                val view = super.getView(position, convertView, parent)
+                if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
+                return view
+            }
+            override fun getDropDownView(position: Int, convertView: android.view.View?, parent: android.view.ViewGroup): android.view.View {
+                val view = super.getDropDownView(position, convertView, parent)
+                if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
+                return view
+            }
+        }.apply {
             setDropDownViewResource(R.layout.item_spinner_dropdown)
         }
-        binding.spUnderlineMode.adapter = ArrayAdapter(
+        binding.spUnderlineMode.adapter = object : ArrayAdapter<String>(
             requireContext(),
             R.layout.item_text_common,
-            listOf("无", "实线下划线", "虚线下划线", "波浪下划线", "标题强调条", "自定义SVG")
-        ).apply {
+            listOf("无", "实线下划线", "虚线下划线", "波浪下划线", "双下划线", "自定义SVG", "删除线", "斜体", "方框")
+        ) {
+            override fun getView(position: Int, convertView: android.view.View?, parent: android.view.ViewGroup): android.view.View {
+                val view = super.getView(position, convertView, parent)
+                if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
+                return view
+            }
+            override fun getDropDownView(position: Int, convertView: android.view.View?, parent: android.view.ViewGroup): android.view.View {
+                val view = super.getDropDownView(position, convertView, parent)
+                if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
+                return view
+            }
+        }.apply {
             setDropDownViewResource(R.layout.item_spinner_dropdown)
         }
-        binding.spBgImageFit.adapter = ArrayAdapter(
+        binding.spBgImageFit.adapter = object : ArrayAdapter<String>(
             requireContext(),
             R.layout.item_text_common,
             listOf("平铺", "拉伸填充", "居中裁剪")
-        ).apply {
+        ) {
+            override fun getView(position: Int, convertView: android.view.View?, parent: android.view.ViewGroup): android.view.View {
+                val view = super.getView(position, convertView, parent)
+                if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
+                return view
+            }
+            override fun getDropDownView(position: Int, convertView: android.view.View?, parent: android.view.ViewGroup): android.view.View {
+                val view = super.getDropDownView(position, convertView, parent)
+                if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
+                return view
+            }
+        }.apply {
             setDropDownViewResource(R.layout.item_spinner_dropdown)
         }
 
@@ -198,6 +254,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.etUnderlineColor.setTextColor(primaryTextColor)
         binding.etUnderlineColor.setHintTextColor(secondaryTextColor)
         binding.etUnderlineWidth.setTextColor(primaryTextColor)
+        binding.etUnderlineWidth.setHintTextColor(secondaryTextColor)
         binding.etUnderlineOffset.setHintTextColor(secondaryTextColor)
         binding.etUnderlineOffset.setTextColor(primaryTextColor)
         binding.etSvgPath.setTextColor(primaryTextColor)
@@ -211,6 +268,11 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.etScope.setHintTextColor(secondaryTextColor)
         binding.etExcludeScope.setTextColor(primaryTextColor)
         binding.etExcludeScope.setHintTextColor(secondaryTextColor)
+        
+        // 将预览文本颜色设置为主题颜色
+        binding.tvPreview.setTextColor(primaryTextColor)
+        binding.tvPatternError.setTextColor(requireContext().getColor(R.color.error))
+        binding.tvBgImageScale.setTextColor(secondaryTextColor)
 
         binding.tvRegexToggle.setTextColor(primaryTextColor)
         binding.tvRegexToggle.background?.mutate()?.setTint(bg)
@@ -242,6 +304,55 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.tvOffsetMinus.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.tvOffsetPlus.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.etUnderlineOffset.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+
+        // 设置 Spinner 下拉弹窗背景色，避免深色主题下白底白字
+        val popupBg = android.graphics.drawable.GradientDrawable().apply {
+            shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+            cornerRadius = 14f * density
+            setColor(bg)
+            setStroke((1f * density).toInt().coerceAtLeast(1), cardStrokeColor)
+        }
+        binding.spGroup.setPopupBackgroundDrawable(popupBg)
+        binding.spTarget.setPopupBackgroundDrawable(popupBg)
+        binding.spUnderlineMode.setPopupBackgroundDrawable(popupBg)
+        binding.spBgImageFit.setPopupBackgroundDrawable(popupBg)
+
+        // 递归遍历三个卡片容器，将静态标签的文字颜色替换为动态主题色
+        applyThemeToStaticLabels()
+        updateRegexToggle()
+    }
+
+    /**
+     * 递归遍历卡片容器中的所有 TextView，将 XML 中使用 @color/primaryText 和 @color/secondaryText
+     * 的静态标签替换为动态主题颜色。
+     * 已在 initTheme() 中显式设置过颜色的控件不会受影响（因为它们的 currentTextColor
+     * 已经不是静态颜色值了）。
+     */
+    private fun applyThemeToStaticLabels() {
+        val staticPrimary = requireContext().getColor(R.color.primaryText)
+        val staticSecondary = requireContext().getColor(R.color.secondaryText)
+        listOf(binding.cardInfo, binding.cardStyle, binding.cardPreview).forEach { card ->
+            applyThemeColorRecursive(card, staticPrimary, staticSecondary)
+        }
+    }
+
+    private fun applyThemeColorRecursive(
+        view: View,
+        staticPrimary: Int,
+        staticSecondary: Int
+    ) {
+        if (view is android.widget.TextView) {
+            val currentColor = view.currentTextColor
+            if (currentColor == staticPrimary) {
+                view.setTextColor(primaryTextColor)
+            } else if (currentColor == staticSecondary) {
+                view.setTextColor(secondaryTextColor)
+            }
+        } else if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                applyThemeColorRecursive(view.getChildAt(i), staticPrimary, staticSecondary)
+            }
+        }
     }
 
     private fun makeCardDrawable(
@@ -284,7 +395,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.spBgImageFit.setSelection(editingRule.bgImageFit.coerceIn(0, 2))
         binding.sbBgImageScale.progress = (editingRule.bgImageScale.coerceIn(0.1f, 5f) * 10).toInt()
         binding.tvBgImageScale.text = "${editingRule.bgImageScale.coerceIn(0.1f, 5f).formatScale()}x"
-        binding.spUnderlineMode.setSelection(editingRule.underlineMode.coerceIn(0, 5))
+        binding.spUnderlineMode.setSelection(editingRule.underlineMode.coerceIn(0, 8))
         val groupIndex = groupItems.indexOf(editingRule.group).takeIf { it >= 0 } ?: 0
         binding.spGroup.setSelection(groupIndex)
         binding.spTarget.setSelection(editingRule.targetScope.coerceIn(0, 2))
@@ -298,6 +409,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         updateBgPreview()
         
         updateSvgPathVisibility(editingRule.underlineMode)
+        updateRegexToggle()
     }
 
     private fun bindEvents() {
@@ -320,7 +432,9 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         }
         binding.tvRegexToggle.setOnClickListener {
             isRegexMode = !isRegexMode
+            editingRule.isRegex = isRegexMode
             updateRegexToggle()
+            updatePreview()
         }
         binding.tvWidthMinus.setOnClickListener {
             adjustWidth(-0.5f)
@@ -471,6 +585,13 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
     }
 
     private fun updateRegexToggle() {
+        binding.tvRegexToggle.text = getString(
+            if (isRegexMode) {
+                R.string.explore_block_rule_regex_mode
+            } else {
+                R.string.explore_block_rule_keyword_mode
+            }
+        )
         if (isRegexMode) {
             binding.tvRegexToggle.setTextColor(accentColor)
         } else {
@@ -508,7 +629,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         // 如果有背景图片，显示图片预览
         val bgImage = editingRule.bgImage.orEmpty()
         if (bgImage.isNotBlank()) {
-            val bitmap = TextLine.getBgBitmap(bgImage)
+            val bitmap = HighlightRuleBackgroundManager.getBitmap(bgImage)
             if (bitmap != null) {
                 val drawable = android.graphics.drawable.BitmapDrawable(resources, bitmap)
                 binding.viewBgImagePreview.background = drawable
@@ -580,6 +701,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
             id = editingRule.id.ifBlank { System.currentTimeMillis().toString() },
             name = name.ifBlank { pattern },
             pattern = pattern,
+            isRegex = isRegexMode,
             sampleText = binding.etSampleText.text?.toString().orEmpty(),
             group = groupItems.getOrElse(binding.spGroup.selectedItemPosition) {
                 HighlightRuleGroupStore.DEFAULT_GROUP
@@ -617,6 +739,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
             editingRule.copy(
                 name = binding.etName.text?.toString().orEmpty(),
                 pattern = pattern,
+                isRegex = isRegexMode,
                 sampleText = binding.etSampleText.text?.toString().orEmpty(),
                 group = groupItems.getOrElse(binding.spGroup.selectedItemPosition) {
                     HighlightRuleGroupStore.DEFAULT_GROUP
@@ -639,6 +762,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
 
     private fun validatePattern(pattern: String): String? {
         if (pattern.isBlank()) return null
+        if (!isRegexMode) return null
         return kotlin.runCatching { Regex(pattern) }.exceptionOrNull()?.localizedMessage
     }
 
