@@ -271,8 +271,27 @@ class VideoPlayer: StandardGSYVideoPlayer {
         }
     }
 
+    /** 跳过片尾已触发标志，防止重复触发 */
+    private var skipOutroTriggered = false
+
     override fun onPrepared() {
         super.onPrepared()
+        // 确保切换章节后静音状态仍然生效
+        // onPrepared 是播放器完全准备好之后的回调，此时 ExoPlayer 已存在，可直接设置音量
+        setMute(VideoPlay.mutePlay)
+        // 重置跳过片尾标志
+        skipOutroTriggered = false
+        // 跳过片头：仅在非续播（seekOnStart 为 0）且开启跳过片头时生效
+        if (VideoPlay.skipIntroOutroEnabled && VideoPlay.skipIntroSeconds > 0
+            && seekOnStart <= 0
+        ) {
+            val skipMs = VideoPlay.skipIntroSeconds * 1000L
+            val duration = getDuration()
+            // 确保片头秒数不超过视频总时长
+            if (duration > 0 && skipMs < duration) {
+                seekTo(skipMs)
+            }
+        }
         onPrepareDanmaku(this)
     }
     private fun onPrepareDanmaku(gsyVideoPlayer: VideoPlayer) {
@@ -310,6 +329,28 @@ class VideoPlayer: StandardGSYVideoPlayer {
             danmakuOnResume()
         } else if (mCurrentState == CURRENT_STATE_PAUSE) {
             danmakuOnPause()
+        }
+    }
+
+    override fun setProgressAndTime(
+        progress: Long,
+        secondProgress: Long,
+        currentTime: Long,
+        totalTime: Long,
+        forceChange: Boolean
+    ) {
+        super.setProgressAndTime(progress, secondProgress, currentTime, totalTime, forceChange)
+        // 跳过片尾：当剩余时间小于设定秒数时，自动跳到下一集
+        // setProgressAndTime 由进度定时器每秒调用，是检测播放位置的可靠回调
+        if (VideoPlay.skipIntroOutroEnabled && VideoPlay.skipOutroSeconds > 0
+            && totalTime > 0 && !skipOutroTriggered
+        ) {
+            val remainingMs = totalTime - currentTime
+            val skipMs = VideoPlay.skipOutroSeconds * 1000L
+            if (remainingMs <= skipMs) {
+                skipOutroTriggered = true
+                onAutoCompletion()
+            }
         }
     }
 

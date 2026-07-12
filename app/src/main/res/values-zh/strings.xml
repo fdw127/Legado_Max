@@ -1828,9 +1828,8 @@
     <string name="preset_rules">预设规则</string>
     <string name="import_rules">导入规则</string>
     <string name="share_rules">分享规则</string>
-    <string name="export_rules">导出规则</string>
-    <string name="import_export_rules">导入 / 导出规则</string>
-    <string name="import_from_clipboard">从剪贴板导入</string>
+<string name="export_rules">导出规则</string>
+<string name="import_from_clipboard">从剪贴板导入</string>
     <string name="import_from_file">从文件导入</string>
     <string name="export_to_file">导出到文件</string>
     <string name="cover_gallery">封面图集</string>
@@ -2092,4 +2091,10 @@
     <string name="module_type_waterfall">错位瀑布流</string>
     <string name="module_type_infinite_grid">无限网格</string>
     <string name="module_type_button_group">按钮组</string>
+
+    <!-- 视频播放器跳过片头片尾 -->
+    <string name="skip_intro_outro_enabled">跳过片头片尾</string>
+    <string name="skip_intro_seconds">跳过片头秒数</string>
+    <string name="skip_outro_seconds">跳过片尾秒数</string>
+    <string name="skip_seconds_summary">秒数：%d秒</string>
 </resources>
