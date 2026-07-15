@@ -5,6 +5,24 @@
 ###  minSdk 21 | targetSdk 36
 ### Kotlin版本: 2.3.10 | Rhino版本: 1.8.1 | Compose版本: 2025.04.01 | Compose UI 版本:  1.7.x | Material3 版本: 1.3.x | okhttp版本: 5.3.2
 
+### 项目继承历史
+##### 原版
+* [Github](https://github.com/gedoor/legado)
+##### Sigma版
+* [Github](https://github.com/Luoyacheng/legado)
+* [Gitee](https://gitee.com/lyc486/legado/releases)
+* [详细日志](https://gitee.com/lyc486/legado/commits/main)
+##### Max版
+* [Github主干youfengknight](https://github.com/youfengknight/Legado_Max)
+* [Github分支GEd520](https://github.com/GEd520/legados)
+* [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
+
+**2026/7/15**
+- docs(正则)：优化和增加正则文档
+
+**2026/7/13**
+- fix(高亮正则)：旁白说明内置正则优化
+- fix(SSL验证)：SSL验证提醒toast去除
 
 **2026/7/13**
 - fix(主题): 修复设置背景图片后偶现主界面背景不生效的问题
