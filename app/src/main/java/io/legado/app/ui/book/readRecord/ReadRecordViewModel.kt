@@ -110,7 +110,10 @@ class ReadRecordViewModel : ViewModel() {
                 repository.getAllSessions(),
                 repository.getTotalReadTime()
             ) { details, latest, sessions, totalTime ->
-                LoadedData(totalTime, details, latest, sessions)
+                // normalizedLatestRecords 在 loadedDataFlow 中预计算，
+                // 避免 uiState 每次重发时重复调用 applyDetailReadTimes。
+                val normalizedRecords = repository.applyDetailReadTimes(latest, details)
+                LoadedData(totalTime, details, latest, sessions, normalizedRecords)
             }
         }
 
@@ -166,7 +169,7 @@ class ReadRecordViewModel : ViewModel() {
             }
             .toSortedMap(compareByDescending { it })
 
-        val normalizedLatestRecords = repository.applyDetailReadTimes(data.latestRecords, data.details)
+        val normalizedLatestRecords = data.normalizedLatestRecords
 
         val latestRecords = if (dateStr == null) {
             normalizedLatestRecords
@@ -464,7 +467,8 @@ class ReadRecordViewModel : ViewModel() {
         val totalReadTime: Long,
         val details: List<ReadRecordDetail>,
         val latestRecords: List<ReadRecord>,
-        val sessions: List<ReadRecordSession>
+        val sessions: List<ReadRecordSession>,
+        val normalizedLatestRecords: List<ReadRecord>
     )
 
     private fun cacheKey(bookName: String, bookAuthor: String) = "$bookName|$bookAuthor"
