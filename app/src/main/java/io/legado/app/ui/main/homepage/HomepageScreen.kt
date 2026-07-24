@@ -12,11 +12,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -43,15 +46,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabPosition
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -94,6 +90,8 @@ import io.legado.app.ui.main.homepage.modules.WaterfallItem
 import io.legado.app.ui.theme.pageAccentColor
 import io.legado.app.ui.theme.pageCardElevatedContainerColor
 import io.legado.app.ui.theme.pageSecondaryTextColor
+import io.legado.app.ui.theme.pageTopBarColors
+import io.legado.app.ui.theme.pageTopBarBackground
 import io.legado.app.ui.widget.components.BookBottomSheet
 import io.legado.app.ui.widget.components.card.GlassCard
 import io.legado.app.utils.showHelp
@@ -120,6 +118,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun HomepageScreen(
     viewModel: HomepageViewModel = viewModel(),
+    bottomPaddingPx: Int = 0,
     onBookClick: (name: String?, author: String?, bookUrl: String, origin: String?, coverPath: String?) -> Unit,
     onModuleHeaderClick: (title: String?, sourceUrl: String, exploreUrl: String?) -> Unit,
 ) {
@@ -184,14 +183,32 @@ fun HomepageScreen(
         modifier = Modifier,
         containerColor = Color.Transparent,
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.homepage_title), fontWeight = FontWeight.Bold) },
-                actions = {
+            val topBarColors = pageTopBarColors()
+            Box(
+                modifier = Modifier
+                    .pageTopBarBackground(topBarColors)
+                    .windowInsetsPadding(WindowInsets.statusBars)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.homepage_title),
+                        fontWeight = FontWeight.Bold,
+                        color = topBarColors.contentColor,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = 16.dp)
+                    )
                     // 模块管理
                     IconButton(onClick = { showManageSheet = true }) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = stringResource(R.string.homepage_module_manage)
+                            contentDescription = stringResource(R.string.homepage_module_manage),
+                            tint = topBarColors.contentColor
                         )
                     }
                     // 三点菜单（切换布局、帮助等）
@@ -199,7 +216,8 @@ fun HomepageScreen(
                         IconButton(onClick = { showOverflowMenu = true }) {
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
-                                contentDescription = stringResource(R.string.homepage_more)
+                                contentDescription = stringResource(R.string.homepage_more),
+                                tint = topBarColors.contentColor
                             )
                         }
                         DropdownMenu(
@@ -270,11 +288,8 @@ fun HomepageScreen(
                             )
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent
-                )
-            )
+                }
+            }
         }
     ) { paddingValues ->
         if (uiState.modules.isEmpty() && !uiState.isRefreshing) {
@@ -304,6 +319,7 @@ fun HomepageScreen(
                 modules = uiState.modules,
                 sets = uiState.manageState.sets,
                 paddingValues = paddingValues,
+                bottomPaddingPx = bottomPaddingPx,
                 viewModel = viewModel,
                 context = context,
                 isRefreshing = uiState.isRefreshing,
@@ -333,7 +349,10 @@ fun HomepageScreen(
                 ) {
                     LazyColumn(
                         state = listState,
-                        contentPadding = PaddingValues(vertical = 8.dp),
+                        contentPadding = PaddingValues(
+                            top = 8.dp,
+                            bottom = 8.dp + with(androidx.compose.ui.platform.LocalDensity.current) { bottomPaddingPx.toDp() }
+                        ),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         items(sortedModules, key = { it.globalId }) { module ->
@@ -360,7 +379,10 @@ fun HomepageScreen(
                     listState = listState,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(end = 16.dp, bottom = 16.dp)
+                        .padding(
+                            end = 16.dp,
+                            bottom = 16.dp + with(androidx.compose.ui.platform.LocalDensity.current) { bottomPaddingPx.toDp() }
+                        )
                 )
             }
         }
@@ -433,6 +455,7 @@ private fun SourceTabLayout(
     modules: List<HomepageModuleUi>,
     sets: List<HomepageSourceManageUi>,
     paddingValues: PaddingValues,
+    bottomPaddingPx: Int,
     viewModel: HomepageViewModel,
     context: android.content.Context,
     isRefreshing: Boolean,
@@ -478,7 +501,7 @@ private fun SourceTabLayout(
         modifier = Modifier
             .fillMaxSize()
             .padding(
-                top = (paddingValues.calculateTopPadding() - 16.dp).coerceAtLeast(0.dp),
+                top = paddingValues.calculateTopPadding(),
                 bottom = paddingValues.calculateBottomPadding(),
                 start = paddingValues.calculateLeftPadding(layoutDirection),
                 end = paddingValues.calculateRightPadding(layoutDirection),
@@ -486,38 +509,39 @@ private fun SourceTabLayout(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
         if (selectedSets.isEmpty()) return@Column
-        // 可滚动的 Tab 栏
-        ScrollableTabRow(
-            selectedTabIndex = safeTabIndex,
-            edgePadding = 8.dp,
-            containerColor = Color.Transparent,
-            // 自定义 indicator：防止 tabPositions 与 selectedTabIndex 不同步时越界
-            indicator = { tabPositions ->
-                if (tabPositions.isNotEmpty() && safeTabIndex < tabPositions.size) {
-                    TabRowDefaults.Indicator(
-                        Modifier.tabIndicatorOffset(tabPositions[safeTabIndex])
-                    )
-                }
-            }
+        // 可滚动的 Tab 栏（使用 Surface 样式，与排行榜 Tab 风格一致）
+        val tabScrollState = rememberScrollState()
+        val accent = pageAccentColor()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(tabScrollState)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             selectedSets.forEachIndexed { index, set ->
-                Tab(
-                    selected = safeTabIndex == index,
+                val isSelected = safeTabIndex == index
+                Surface(
+                    color = if (isSelected) accent.copy(alpha = 0.12f) else Color.Transparent,
+                    contentColor = if (isSelected) accent else pageSecondaryTextColor(),
+                    shape = RoundedCornerShape(8.dp),
+                    border = if (isSelected) null else BorderStroke(1.dp, pageSecondaryTextColor().copy(alpha = 0.2f)),
                     onClick = {
                         selectedTabIndex = index
                         coroutineScope.launch {
                             pagerState.animateScrollToPage(index)
                         }
-                    },
-                    text = {
-                        Text(
-                            text = set.sourceName,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.labelLarge
-                        )
                     }
-                )
+                ) {
+                    Text(
+                        text = set.sourceName,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
             }
         }
         // 使用 HorizontalPager 实现左右滑动切换书源集
@@ -565,7 +589,10 @@ private fun SourceTabLayout(
             ) {
                 LazyColumn(
                     state = listState,
-                    contentPadding = PaddingValues(vertical = 8.dp),
+                    contentPadding = PaddingValues(
+                        top = 8.dp,
+                        bottom = 8.dp + with(androidx.compose.ui.platform.LocalDensity.current) { bottomPaddingPx.toDp() }
+                    ),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(currentModules, key = { it.globalId }) { module ->
@@ -591,7 +618,10 @@ private fun SourceTabLayout(
                 listState = state,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 16.dp, bottom = 16.dp)
+                    .padding(
+                        end = 16.dp,
+                        bottom = 16.dp + with(androidx.compose.ui.platform.LocalDensity.current) { bottomPaddingPx.toDp() }
+                    )
             )
         }
     }
