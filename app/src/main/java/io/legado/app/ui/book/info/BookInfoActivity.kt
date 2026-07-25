@@ -333,6 +333,10 @@ class BookInfoActivity :
             AppConfig.bookInfoShowReadRecord
         menu.findItem(R.id.menu_show_author_other_works)?.isChecked =
             AppConfig.bookInfoShowAuthorOtherWorks
+        menu.findItem(R.id.menu_cache_recover)?.isChecked =
+            AppConfig.cacheRecoverOnTocFail
+        menu.findItem(R.id.menu_cache_recover)?.isVisible =
+            viewModel.bookData.value?.isLocal != true
         return super.onMenuOpened(featureId, menu)
     }
 
@@ -460,6 +464,9 @@ class BookInfoActivity :
             R.id.menu_show_author_other_works -> {
                 AppConfig.bookInfoShowAuthorOtherWorks = !item.isChecked
                 viewModel.getBook()?.let { upAuthorOtherWorksVisibility(it) }
+            }
+            R.id.menu_cache_recover -> {
+                AppConfig.cacheRecoverOnTocFail = !item.isChecked
             }
             R.id.menu_upload -> {
                 viewModel.getBook()?.let { book ->
@@ -1391,11 +1398,12 @@ class BookInfoActivity :
         return viewModel.getBookShelfState(book)
     }
 
-    override fun showBookInfo(name: String, author: String, bookUrl: String) {
+    override fun showBookInfo(name: String, author: String, bookUrl: String, origin: String) {
         val intent = Intent(this, BookInfoActivity::class.java)
         intent.putExtra("name", name)
         intent.putExtra("author", author)
         intent.putExtra("bookUrl", bookUrl)
+        intent.putExtra("origin", origin)
         intent.putExtra("fromAuthorOtherWorks", true)
         startActivity(intent)
     }

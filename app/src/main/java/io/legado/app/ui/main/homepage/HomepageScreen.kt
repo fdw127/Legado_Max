@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -509,37 +510,45 @@ private fun SourceTabLayout(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
         if (selectedSets.isEmpty()) return@Column
-        // 可滚动的 Tab 栏（使用 Surface 样式，与排行榜 Tab 风格一致）
+        // 可滚动的 Tab 栏（自定义实现，高度36dp，底部下划线指示器）
         val tabScrollState = rememberScrollState()
         val accent = pageAccentColor()
+        val secondaryColor = pageSecondaryTextColor()
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(tabScrollState)
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                .height(36.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             selectedSets.forEachIndexed { index, set ->
                 val isSelected = safeTabIndex == index
-                Surface(
-                    color = if (isSelected) accent.copy(alpha = 0.12f) else Color.Transparent,
-                    contentColor = if (isSelected) accent else pageSecondaryTextColor(),
-                    shape = RoundedCornerShape(8.dp),
-                    border = if (isSelected) null else BorderStroke(1.dp, pageSecondaryTextColor().copy(alpha = 0.2f)),
-                    onClick = {
-                        selectedTabIndex = index
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(index)
-                        }
-                    }
+                Box(
+                    modifier = Modifier
+                        .height(36.dp)
+                        .clickable {
+                            selectedTabIndex = index
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(index)
+                            }
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = set.sourceName,
+                        modifier = Modifier.padding(horizontal = 16.dp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        color = if (isSelected) accent else secondaryColor
+                    )
+                    // 底部下划线指示器
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .height(2.dp)
+                            .background(if (isSelected) accent else Color.Transparent)
                     )
                 }
             }
