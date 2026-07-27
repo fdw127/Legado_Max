@@ -794,17 +794,36 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         )
         bottomNavigationView.alpha = 1f
         bottomNavigationView.elevation = 0f
-        // 不透明度为 0 时用户期望完全透明的底栏，需要同时移除 elevation 阴影，
-        // 否则 Android 仍会根据 elevation 绘制阴影（与背景透明度无关）。
-        val fullyTransparent = config.opacity <= 0
-        bottomNavigationGlass.elevation = if (floating && !fullyTransparent) {
-            when (config.effectMode) {
-                NavigationBarConfig.EFFECT_SOLID -> 8.dpToPx().toFloat()
-                NavigationBarConfig.EFFECT_FROSTED -> 14.dpToPx().toFloat()
-                else -> 12.dpToPx().toFloat()
+        // 阴影 alpha 随不透明度变化：底栏越透明阴影越淡，高不透明度时完整保留深度感。
+        // Android elevation 阴影颜色固定为深色，不受背景透明度影响。
+        // 低不透明度时背景近乎透明，深色阴影直接投射在页面内容上对比度反而更高，
+        // 所以必须控制阴影本身的 alpha，而非仅缩放 elevation 值。
+        val opacityFactor = config.opacity.coerceIn(0, 100) / 100f
+        val fullyTransparent = opacityFactor <= 0f
+        val baseElevation = when (config.effectMode) {
+            NavigationBarConfig.EFFECT_SOLID -> 8.dpToPx().toFloat()
+            NavigationBarConfig.EFFECT_FROSTED -> 14.dpToPx().toFloat()
+            else -> 12.dpToPx().toFloat()
+        }
+        if (floating && opacityFactor > 0f) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                // API 28+：保留固定 elevation 提供阴影形状，通过阴影颜色 alpha 精确控制强度
+                bottomNavigationGlass.elevation = baseElevation
+                val shadowAlpha = (opacityFactor * 255).toInt()
+                bottomNavigationGlass.outlineSpotShadowColor =
+                    Color.argb(shadowAlpha, 0, 0, 0)
+                bottomNavigationGlass.outlineAmbientShadowColor =
+                    Color.argb(shadowAlpha, 0, 0, 0)
+            } else {
+                // API < 28：无法控制阴影颜色，用平方缩放让低不透明度时阴影更快消失
+                bottomNavigationGlass.elevation = baseElevation * opacityFactor * opacityFactor
             }
         } else {
-            0f
+            bottomNavigationGlass.elevation = 0f
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                bottomNavigationGlass.outlineSpotShadowColor = Color.TRANSPARENT
+                bottomNavigationGlass.outlineAmbientShadowColor = Color.TRANSPARENT
+            }
         }
         bottomNavigationView.setBackgroundColor(Color.TRANSPARENT)
         bottomNavigationView.background = Color.TRANSPARENT.toDrawable()

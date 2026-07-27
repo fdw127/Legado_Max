@@ -140,6 +140,7 @@
     <string name="restore_message">Restoring the bookshelf data will overwrite the current Bookshelf.</string>
     <string name="backup_success">Backup succeed</string>
     <string name="backup_fail">Backup failed\n%s</string>
+    <string name="backup_local_only">Backup local only</string>
     <string name="on_restore">Restoring</string>
     <string name="restore_success">Restore succeed</string>
     <string name="restore_fail">Backup failed</string>
@@ -769,9 +770,8 @@
     <string name="regex">Regex</string>
     <string name="example">Example</string>
     <string name="more_menu">More menu</string>
-    <string name="highlight_rule_config">Highlight rules</string>
-    <string name="highlight_rule_config_summary">Preset dialogue, title and bracket note highlights</string>
-    <string name="highlight_rule_dialog_title">Highlight rules</string>
+<string name="highlight_rule_config">Highlight rules</string>
+<string name="highlight_rule_dialog_title">Highlight rules</string>
     <string name="highlight_rule_preset">Preset rules</string>
     <string name="highlight_rule_dialog_name">Dialogue highlight</string>
     <string name="highlight_rule_dialog_desc">Highlight dialogue content inside Chinese, Japanese and English quotes</string>
@@ -902,7 +902,7 @@
     <string name="text_bottom_justify">Text align bottom</string>
     <string name="auto_page_speed">Auto scroll speed</string>
     <string name="sort_by_url">Sort by URL</string>
-    <string name="backup_summary">Backup the local and WebDav simultaneously</string>
+    <string name="backup_summary">Backup the local and WebDav simultaneously, long press to backup local only</string>
     <string name="restore_summary">Restore from WebDAV first, Restore form the local backup on long click</string>
     <string name="import_old_summary">Select a legacy backup folder</string>
     <string name="enabled">Enabled</string>
@@ -1193,6 +1193,8 @@
     <string name="cover_html_code_summary">Customize HTML code to generate cover images</string>
     <string name="cover_html_enable">Auto generate cover</string>
     <string name="cover_html_enable_summary">Use HTML template to generate cover images</string>
+    <string name="book_cover_shadow">Show cover shadow</string>
+    <string name="book_cover_shadow_summary">Fill background behind transparent cover areas</string>
     <string name="cover_html_preview">Preview</string>
     <string name="cover_html_book_name">Book Name</string>
     <string name="cover_html_author">Author</string>

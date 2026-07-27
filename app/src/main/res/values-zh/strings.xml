@@ -138,6 +138,7 @@
     <string name="restore_message">恢复书架会覆盖现有书架。</string>
     <string name="backup_success">备份成功</string>
     <string name="backup_fail">备份失败\n%s</string>
+    <string name="backup_local_only">仅备份本地</string>
     <string name="on_restore">正在恢复</string>
     <string name="restore_success">恢复成功</string>
     <string name="restore_fail">恢复失败</string>
@@ -767,9 +768,8 @@
     <string name="name">名称</string>
     <string name="regex">正则</string>
     <string name="more_menu">更多菜单</string>
-    <string name="highlight_rule_config">高亮规则</string>
-    <string name="highlight_rule_config_summary">预置对话、书名号和括号标注高亮</string>
-    <string name="highlight_rule_dialog_title">高亮规则</string>
+<string name="highlight_rule_config">高亮规则</string>
+<string name="highlight_rule_dialog_title">高亮规则</string>
     <string name="highlight_rule_preset">预置规则</string>
     <string name="highlight_rule_dialog_name">对话高亮</string>
     <string name="highlight_rule_dialog_desc">高亮中文、日文和英文双引号中的对话内容</string>
@@ -899,7 +899,7 @@
     <string name="text_bottom_justify">文字底部对齐</string>
     <string name="auto_page_speed">自动翻页速度</string>
     <string name="sort_by_url">地址排序</string>
-    <string name="backup_summary">本地和 WebDav 一起备份</string>
+    <string name="backup_summary">本地和 WebDav 一起备份，长按仅备份本地</string>
     <string name="restore_summary">优先从 WebDav 恢复，长按从本地恢复</string>
     <string name="import_old_summary">选择旧版备份文件夹</string>
     <string name="enabled">已启用</string>
@@ -1189,6 +1189,8 @@
     <string name="cover_html_code_summary">自定义HTML代码来生成封面图片</string>
     <string name="cover_html_enable">自动生成封面</string>
     <string name="cover_html_enable_summary">使用HTML模板生成封面图片</string>
+    <string name="book_cover_shadow">显示封面阴影</string>
+    <string name="book_cover_shadow_summary">关闭后透明封面区域不填充背景色</string>
     <string name="cover_html_preview">预览</string>
     <string name="cover_html_book_name">书名</string>
     <string name="cover_html_author">作者</string>

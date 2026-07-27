@@ -123,6 +123,7 @@
     <string name="restore_message">復原書架會覆蓋現有書架。</string>
     <string name="backup_success">備份成功</string>
     <string name="backup_fail">備份失敗\n%s</string>
+    <string name="backup_local_only">僅備份本機</string>
     <string name="on_restore">正在復原</string>
     <string name="restore_success">復原成功</string>
     <string name="restore_fail">復原失敗</string>
@@ -751,7 +752,7 @@
     <string name="text_bottom_justify">文字底部對齊</string>
     <string name="auto_page_speed">自動翻頁速度</string>
     <string name="sort_by_url">地址排序</string>
-    <string name="backup_summary">本機和 WebDav 一起備份</string>
+    <string name="backup_summary">本機和 WebDav 一起備份，長按僅備份本機</string>
     <string name="restore_summary">優先從 WebDav 復原，長按從本機復原</string>
     <string name="import_old_summary">選擇舊版備份資料夾</string>
     <string name="enabled">已啟用</string>
@@ -1291,6 +1292,8 @@
     <string name="cover_html_code_summary">自訂封面 HTML 程式碼</string>
     <string name="cover_html_enable">啟用封面 HTML</string>
     <string name="cover_html_enable_summary">使用 HTML 產生預設封面</string>
+    <string name="book_cover_shadow">顯示封面陰影</string>
+    <string name="book_cover_shadow_summary">關閉後透明封面區域不填充背景色</string>
     <string name="custom_button">自訂按鈕</string>
     <string name="custom_hosts">自訂 Hosts</string>
     <string name="custom_hosts_summary">網域名稱到 IP 的對應</string>
@@ -1315,8 +1318,7 @@
     <string name="float_window">懸浮窗</string>
     <string name="format_code">格式化</string>
     <string name="show_score">開啟評分</string>
-    <string name="highlight_rule_config">高亮規則配置</string>
-    <string name="highlight_rule_config_summary">配置閱讀內容高亮規則</string>
+<string name="highlight_rule_config">高亮規則配置</string>
     <string name="highlight_rule_scope">作用範圍，書名或書源URL</string>
     <string name="highlight_rule_scope_hint">書名或書源URL，分號分隔，留空則對所有書籍生效</string>
     <string name="highlight_rule_exclude_scope">排除範圍，書名或書源URL</string>
