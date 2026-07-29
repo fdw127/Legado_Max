@@ -136,7 +136,7 @@ data class NavigationBarConfig(
                 isBuiltin = true,
                 layoutMode = LAYOUT_STANDARD,
                 effectMode = EFFECT_SOLID,
-                opacity = 30,
+                opacity = 80,
                 updatedAt = 0L
             )
         }
@@ -149,7 +149,7 @@ data class NavigationBarConfig(
                 isBuiltin = true,
                 layoutMode = LAYOUT_STANDARD,
                 effectMode = EFFECT_SOLID,
-                opacity = 30,
+                opacity = 70,
                 updatedAt = 0L
             )
         }
