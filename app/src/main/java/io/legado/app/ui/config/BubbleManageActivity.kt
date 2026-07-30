@@ -14,6 +14,7 @@ import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.widget.SwitchCompat
 import androidx.activity.result.contract.ActivityResultContracts
@@ -50,6 +51,7 @@ import io.legado.app.ui.widget.number.NumberPickerDialog
 import io.legado.app.utils.ACache
 import io.legado.app.utils.SvgUtils
 import io.legado.app.utils.applyTint
+import io.legado.app.utils.applyNavigationBarMargin
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getFile
 import io.legado.app.utils.isAbsUrl
@@ -143,6 +145,7 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
             UiCorner.actionRadius(this@BubbleManageActivity)
         )
         tvAddTheme.setOnClickListener { showAddActions() }
+        tvAddTheme.applyNavigationBarMargin(withInitialMargin = true)
         root.applyUiBodyTypefaceDeep(uiTypeface())
     }
 
@@ -297,7 +300,11 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
         val root = buildEditView()
         editingRoot = root
         alert(if (entry == null) R.string.add else R.string.edit) {
-            customView { root }
+            customView {
+                ScrollView(this@BubbleManageActivity).apply {
+                    addView(root)
+                }
+            }
             okButton {
                 captureEditFields()
                 val config = editingConfig ?: return@okButton
