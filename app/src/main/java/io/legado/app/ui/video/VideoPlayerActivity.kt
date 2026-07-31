@@ -64,6 +64,7 @@ import io.legado.app.service.VideoPlayService
 import io.legado.app.ui.about.AppLogDialog
 import io.legado.app.model.SourceCallBack
 import io.legado.app.ui.association.OnLineImportActivity
+import io.legado.app.ui.book.info.BookInfoActivity
 import io.legado.app.ui.book.source.edit.BookSourceEditActivity
 import io.legado.app.ui.book.toc.TocActivityResult
 import io.legado.app.ui.login.SourceLoginActivity
@@ -91,6 +92,7 @@ import io.legado.app.utils.toggleSystemBar
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.utils.visible
 import io.legado.app.help.InnerBrowserLinkResolver
+import java.lang.ref.WeakReference
 import androidx.compose.ui.platform.ComposeView
 import io.legado.app.ui.theme.LegadoTheme
 import io.noties.markwon.Markwon
@@ -104,6 +106,11 @@ import kotlinx.coroutines.withContext
 
 class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlayerViewModel>(),
     SettingsDialog.CallBack,RssFavoritesDialog.Callback {
+
+    companion object {
+        @Volatile
+        private var currentInstance: WeakReference<VideoPlayerActivity>? = null
+    }
     override val binding by viewBinding(ActivityVideoPlayerBinding::inflate)
     override val viewModel by viewModels<VideoPlayerViewModel>()
     private val playerView: VideoPlayer by lazy { binding.playerView }
@@ -147,6 +154,8 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
     private var isFullScreen = false
     private var orientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     private var menuCustomBtn: MenuItem? = null
+    // 标记当前实例正被新实例替换，跳过 finish 弹窗和 onDestroy 中的 saveRead
+    private var isFinishingDueToReplacement = false
     private val bookSourceEditResult =
         registerForActivityResult(StartActivityContract(BookSourceEditActivity::class.java)) {
             if (it.resultCode == RESULT_OK) {
@@ -185,6 +194,13 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
 
     @OptIn(UnstableApi::class)
     override fun onActivityCreated(savedInstanceState: Bundle?) {
+        // 改用 standard 启动模式后，新实例创建时自动 finish 旧实例，
+        // 避免返回栈中出现多个 VideoPlayerActivity
+        currentInstance?.get()?.let { old ->
+            old.isFinishingDueToReplacement = true
+            old.finish()
+        }
+        currentInstance = WeakReference(this)
         playerView.enlargeImageRes = R.drawable.ic_fullscreen
         isNew = intent.getBooleanExtra("isNew", true)
         if (isNew) {
@@ -212,25 +228,7 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
     }
 
     /**
-     * 处理 singleTask 复用 Activity 时收到的新 Intent。
-     * 当从发现列表/书籍详情页切换书籍时，旧 Activity 会被复用，
-     * 新的 bookUrl 通过 onNewIntent 传入，需要重新初始化播放。
-     */
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        // 如果在全屏模式，先退出全屏
-        if (isFullScreen) {
-            toggleFullScreen()
-        }
-        startNewSession()
-        initView()
-        upView()
-    }
-
-    /**
      * 初始化新的播放会话：停止旧播放、重置状态、加载新书源数据、开始播放。
-     * 被 onActivityCreated(isNew=true) 和 onNewIntent() 共同调用。
      */
     private fun startNewSession() {
         // 标记新会话启动，跳过 onResume 恢复旧视频
@@ -859,6 +857,11 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
     }
 
     override fun finish() {
+        if (isFinishingDueToReplacement) {
+            // 被新实例替换时直接 finish，不弹窗、不回调
+            super.finish()
+            return
+        }
         val book = VideoPlay.book ?: return super.finish()
         if (VideoPlay.inBookshelf) {
             callBackBookEnd()
@@ -866,7 +869,9 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
         }
         if (!AppConfig.showAddToShelfAlert) {
             callBackBookEnd()
-            viewModel.removeFromBookshelf { super.finish() }
+            viewModel.removeFromBookshelf {
+                super.finish()
+            }
         } else {
             alert(title = getString(R.string.add_to_bookshelf)) {
                 setMessage(getString(R.string.check_add_bookshelf, book.name))
@@ -875,10 +880,13 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
                     VideoPlay.book?.save()
                     VideoPlay.inBookshelf = true
                     setResult(RESULT_OK)
+                    super.finish()
                 }
                 noButton {
                     callBackBookEnd()
-                    viewModel.removeFromBookshelf { super.finish() }
+                    viewModel.removeFromBookshelf {
+                        super.finish()
+                    }
                 }
             }
         }
@@ -934,12 +942,19 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
 
     override fun onDestroy() {
         destroyWeb()
+        if (currentInstance?.get() == this) {
+            currentInstance = null
+        }
         super.onDestroy()
         if (initGetter) {
             glideImageGetter.clear()
         }
-        VideoPlay.saveRead()
-        VideoPlay.stopLoading()
+        if (!isFinishingDueToReplacement) {
+            // 仅跳过操作 VideoPlay 单例的方法（会影响新实例的播放器）
+            VideoPlay.saveRead()
+            VideoPlay.stopLoading()
+        }
+        // 以下操作的是本实例自己的资源，被替换时也必须执行，否则媒体播放器资源泄漏
         playerView.getCurrentPlayer().release()
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
