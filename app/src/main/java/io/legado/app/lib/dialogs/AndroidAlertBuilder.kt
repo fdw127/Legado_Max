@@ -13,15 +13,6 @@ import io.legado.app.utils.applyTint
 internal class AndroidAlertBuilder(override val ctx: Context) : AlertBuilder<AlertDialog> {
     private val builder = AlertDialog.Builder(ctx)
 
-    private class ButtonConfig(
-        val text: CharSequence,
-        val handler: ((DialogInterface) -> Unit)?
-    )
-
-    private var positiveConfig: ButtonConfig? = null
-    private var negativeConfig: ButtonConfig? = null
-    private var neutralConfig: ButtonConfig? = null
-
     override fun setTitle(title: CharSequence) {
         builder.setTitle(title)
     }
@@ -70,68 +61,42 @@ internal class AndroidAlertBuilder(override val ctx: Context) : AlertBuilder<Ale
         buttonText: String,
         onClicked: ((dialog: DialogInterface) -> Unit)?
     ) {
-        positiveConfig = ButtonConfig(buttonText, onClicked)
+        builder.setPositiveButton(buttonText) { dialog, _ -> onClicked?.invoke(dialog) }
     }
 
     override fun positiveButton(
         buttonTextResource: Int,
         onClicked: ((dialog: DialogInterface) -> Unit)?
     ) {
-        positiveConfig = ButtonConfig(ctx.getString(buttonTextResource), onClicked)
+        builder.setPositiveButton(buttonTextResource) { dialog, _ -> onClicked?.invoke(dialog) }
     }
 
     override fun negativeButton(
         buttonText: String,
         onClicked: ((dialog: DialogInterface) -> Unit)?
     ) {
-        negativeConfig = ButtonConfig(buttonText, onClicked)
+        builder.setNegativeButton(buttonText) { dialog, _ -> onClicked?.invoke(dialog) }
     }
 
     override fun negativeButton(
         buttonTextResource: Int,
         onClicked: ((dialog: DialogInterface) -> Unit)?
     ) {
-        negativeConfig = ButtonConfig(ctx.getString(buttonTextResource), onClicked)
+        builder.setNegativeButton(buttonTextResource) { dialog, _ -> onClicked?.invoke(dialog) }
     }
 
     override fun neutralButton(
         buttonText: String,
         onClicked: ((dialog: DialogInterface) -> Unit)?
     ) {
-        neutralConfig = ButtonConfig(buttonText, onClicked)
+        builder.setNeutralButton(buttonText) { dialog, _ -> onClicked?.invoke(dialog) }
     }
 
     override fun neutralButton(
         buttonTextResource: Int,
         onClicked: ((dialog: DialogInterface) -> Unit)?
     ) {
-        neutralConfig = ButtonConfig(ctx.getString(buttonTextResource), onClicked)
-    }
-
-    /**
-     * 将按钮配置应用到 AlertDialog.Builder。
-     *
-     * 当没有显式设置 neutral 按钮时，将 negative 按钮路由到 neutral 槽位（左侧），
-     * positive 按钮保持在 positive 槽位（右侧），使两个按钮分居对话框两端，避免误触。
-     * 当有显式 neutral 按钮时，保持标准布局不变。
-     */
-    private fun applyButtons() {
-        positiveConfig?.let { config ->
-            builder.setPositiveButton(config.text) { dialog, _ -> config.handler?.invoke(dialog) }
-        }
-        if (neutralConfig != null) {
-            neutralConfig?.let { config ->
-                builder.setNeutralButton(config.text) { dialog, _ -> config.handler?.invoke(dialog) }
-            }
-            negativeConfig?.let { config ->
-                builder.setNegativeButton(config.text) { dialog, _ -> config.handler?.invoke(dialog) }
-            }
-        } else if (negativeConfig != null) {
-            // 无 neutral 按钮时，将 negative 路由到 neutral 槽位实现左对齐
-            negativeConfig?.let { config ->
-                builder.setNeutralButton(config.text) { dialog, _ -> config.handler?.invoke(dialog) }
-            }
-        }
+        builder.setNeutralButton(buttonTextResource) { dialog, _ -> onClicked?.invoke(dialog) }
     }
 
     override fun onDismiss(handler: (dialog: DialogInterface) -> Unit) {
@@ -177,7 +142,6 @@ internal class AndroidAlertBuilder(override val ctx: Context) : AlertBuilder<Ale
     }
 
     override fun build(): AlertDialog {
-        applyButtons()
         val dialog = builder.create()
         if (AppConfig.isEInkMode) {
             dialog.window?.run {
@@ -192,7 +156,6 @@ internal class AndroidAlertBuilder(override val ctx: Context) : AlertBuilder<Ale
     }
 
     override fun show(): AlertDialog {
-        applyButtons()
         val dialog = builder.show().applyTint()
         if (AppConfig.isEInkMode) {
             dialog.window?.run {
