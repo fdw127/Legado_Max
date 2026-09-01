@@ -74,6 +74,11 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
             ViewConfiguration.get(requireContext()).scaledScrollBarSize
         binding.recyclerView.setHideScrollbar(false)
         binding.recyclerView.addItemDecoration(VerticalDivider(requireContext()))
+        // 完全禁用 itemAnimator:
+        // 1. 折叠/展开卷时 AsyncListDiffer 触发大量 insert/remove 动画, 导致整个列表跳动
+        // 2. upDisplayTitles 逐项 notifyItemChanged 触发 change 动画, 导致闪烁
+        // 目录列表不需要任何 item 动画, 折叠/展开和内容更新都应即时完成
+        binding.recyclerView.itemAnimator = null
         binding.recyclerView.adapter = adapter
     }
 
@@ -99,7 +104,6 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
             shouldAutoScrollToCurrent = true
             durChapterIndex = book.durChapterIndex
             upChapterList(null)
-            initCacheFileNames(book)
             AppLog.putReaderDebug("[TOC-Frag] initBook after upChapterList: adapter.itemCount=${adapter.itemCount}")
             // 如果数据库为空且不是本地书，可能正在渐进加载中，延迟重试
             if (adapter.itemCount == 0 && !book.isLocal) {
@@ -154,8 +158,10 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
 
     private fun initCacheFileNames(book: Book) {
         viewScope.launch(IO) {
-            adapter.cacheFileNames.addAll(BookHelp.getChapterFiles(book))
+            val fileNames = BookHelp.getChapterFiles(book)
             withContext(Main) {
+                adapter.cacheFileNames.clear()
+                adapter.cacheFileNames.addAll(fileNames)
                 adapter.notifyItemRangeChanged(0, adapter.itemCount, true)
             }
         }
@@ -210,6 +216,8 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
                 adapter.setChapterItems(it, applyCollapse = searchKey.isNullOrBlank())
                 if (searchKey.isNullOrBlank()) {
                     book?.let(::updateCurrentChapterInfo)
+                    // 全量刷新时重新扫描缓存文件, 确保缓存状态图标与实际文件同步
+                    book?.let(::initCacheFileNames)
                 } else {
                     upCurrentChapterInfo(it)
                 }

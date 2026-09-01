@@ -12,6 +12,7 @@ import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.data.dao.BookShelfDisplay
 import io.legado.app.databinding.ItemBookshelfListBinding
 import io.legado.app.help.config.AppConfig
+import io.legado.app.lib.theme.bookBorderBackground
 import io.legado.app.utils.gone
 import io.legado.app.utils.invisible
 import io.legado.app.utils.splitNotBlank
@@ -47,12 +48,14 @@ class BooksAdapterList(
         if (payloads.isEmpty()) {
             // 根据配置控制书籍外边框显示和间距
             if (AppConfig.showBookBorder) {
-                root.background = context.resources.getDrawable(io.legado.app.R.drawable.card_border_background, null)
+                root.background = context.bookBorderBackground
+                root.setPadding(8.dpToPx(), 8.dpToPx(), 8.dpToPx(), 8.dpToPx())
                 (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(
                     4.dpToPx(), 4.dpToPx(), 4.dpToPx(), 4.dpToPx()
                 )
             } else {
                 root.background = null
+                root.setPadding(4.dpToPx(), 4.dpToPx(), 4.dpToPx(), 4.dpToPx())
                 (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(0, 0, 0, 0)
             }
             tvName.text = item.name
@@ -112,7 +115,7 @@ class BooksAdapterList(
     /** 更新简介和标签的显示状态 */
     private fun upMoreInfo(binding: ItemBookshelfListBinding, item: BookShelfDisplay) {
         // 显示标签（使用 FlexboxLayout，每个标签有外框）
-        if (AppConfig.showMoreInfoInList && AppConfig.showTagsInList) {
+        if (AppConfig.showMoreInfoInList && AppConfig.showCategoryInfoInList) {
             binding.flexboxTags.visible()
             updateTagViews(binding.flexboxTags, item)
         } else {

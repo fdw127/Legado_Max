@@ -8,7 +8,9 @@ import io.legado.app.data.entities.readRecord.ReadRecordDetail
 import io.legado.app.data.entities.readRecord.ReadRecordSession
 import io.legado.app.data.entities.readRecord.ReadRecordTimelineDay
 import io.legado.app.constant.AppConst
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.map
 import java.text.SimpleDateFormat
 import java.time.Instant
@@ -152,6 +154,19 @@ class ReadRecordRepository(
             offset += pageSize
         }
         return sessions
+    }
+
+    /**
+     * 分页懒加载 sessions：返回 startTime < [beforeTimestamp] 的前 [limit] 条记录。
+     * 用于时间线视图的首屏加载和滚动加载更多。
+     */
+    suspend fun loadSessionsPage(
+        query: String,
+        dateFilter: String?,
+        beforeTimestamp: Long?,
+        limit: Int
+    ): List<ReadRecordSession> {
+        return dao.getFilteredSessionsBefore(query, dateFilter, beforeTimestamp, limit)
     }
 
     /**
@@ -472,6 +487,28 @@ class ReadRecordRepository(
         }
         dao.deleteSessionsByBookAndDate(record.deviceId, record.bookName, record.bookAuthor, date)
         updateReadRecordTotal(record.deviceId, record.bookName, record.bookAuthor)
+    }
+
+    /**
+     * 合并全部同名书籍的阅读记录：每个书名组以 lastRead 最新（其次 readTime 最大）的记录为目标，
+     * 其余记录合并进去。整体运行在 IO 线程，返回合并的书籍组数。
+     */
+    suspend fun mergeAllSameNameRecords(): Int = withContext(Dispatchers.IO) {
+        val groups = dao.getAllReadRecordsList()
+            .groupBy { it.bookName }
+            .filterValues { it.size > 1 }
+        var mergedCount = 0
+        groups.values.forEach { records ->
+            val target = records.maxWith(
+                compareBy({ it.lastRead }, { it.readTime })
+            )
+            val sources = records.filter { it != target }
+            if (sources.isNotEmpty()) {
+                mergeReadRecordInto(target, sources)
+                mergedCount++
+            }
+        }
+        mergedCount
     }
 
     suspend fun mergeReadRecordInto(targetRecord: ReadRecord, sourceRecords: List<ReadRecord>) {

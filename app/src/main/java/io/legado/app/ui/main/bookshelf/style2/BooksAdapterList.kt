@@ -15,6 +15,7 @@ import io.legado.app.databinding.ItemBookshelfListBinding
 import io.legado.app.databinding.ItemBookshelfListGroupBinding
 import io.legado.app.help.book.isLocal
 import io.legado.app.help.config.AppConfig
+import io.legado.app.lib.theme.bookBorderBackground
 import io.legado.app.utils.gone
 import io.legado.app.utils.invisible
 import io.legado.app.utils.splitNotBlank
@@ -79,12 +80,14 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
         fun onBind(item: Book, position: Int) = binding.run {
             // 根据配置控制书籍外边框显示和间距
             if (AppConfig.showBookBorder) {
-                root.background = context.resources.getDrawable(io.legado.app.R.drawable.card_border_background, null)
+                root.background = context.bookBorderBackground
+                root.setPadding(8.dpToPx(), 8.dpToPx(), 8.dpToPx(), 8.dpToPx())
                 (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(
                     4.dpToPx(), 4.dpToPx(), 4.dpToPx(), 4.dpToPx()
                 )
             } else {
                 root.background = null
+                root.setPadding(4.dpToPx(), 4.dpToPx(), 4.dpToPx(), 4.dpToPx())
                 (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(0, 0, 0, 0)
             }
             tvName.text = item.name
@@ -155,7 +158,7 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
         /** 更新简介和标签的显示状态 */
         private fun upMoreInfo(binding: ItemBookshelfListBinding, item: Book) {
             // 显示标签（使用 FlexboxLayout，每个标签有外框）
-            if (AppConfig.showMoreInfoInList && AppConfig.showTagsInList) {
+            if (AppConfig.showMoreInfoInList && AppConfig.showCategoryInfoInList) {
                 binding.flexboxTags.visible()
                 updateTagViews(binding.flexboxTags, item)
             } else {
@@ -239,12 +242,14 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
         fun onBind(item: Book, position: Int) = binding.run {
             // 根据配置控制书籍外边框显示和间距
             if (AppConfig.showBookBorder) {
-                root.background = context.resources.getDrawable(io.legado.app.R.drawable.card_border_background, null)
+                root.background = context.bookBorderBackground
+                root.setPadding(8.dpToPx(), 8.dpToPx(), 8.dpToPx(), 8.dpToPx())
                 (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(
                     4.dpToPx(), 4.dpToPx(), 4.dpToPx(), 4.dpToPx()
                 )
             } else {
                 root.background = null
+                root.setPadding(4.dpToPx(), 4.dpToPx(), 4.dpToPx(), 4.dpToPx())
                 (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(0, 0, 0, 0)
             }
             tvName.text = item.name
@@ -326,7 +331,7 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
 
         fun onBind(item: BookGroup, position: Int) = binding.run {
             tvName.text = item.groupName
-            ivCover.load(item.cover)
+            ivCover.load(item)
             flHasNew.gone()
             ivAuthor.gone()
             ivLast.gone()
@@ -345,7 +350,7 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
                     bundle.keySet().forEach {
                         when (it) {
                             "groupName" -> tvName.text = item.groupName
-                            "cover" -> ivCover.load(item.cover)
+                            "cover" -> ivCover.load(item)
                         }
                     }
                 }
@@ -368,7 +373,7 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
 
         fun onBind(item: BookGroup, position: Int) = binding.run {
             tvName.text = item.groupName
-            ivCover.load(item.cover)
+            ivCover.load(item)
         }
 
         fun onBind(item: BookGroup, position: Int, payloads: MutableList<Any>) = binding.run {
@@ -380,7 +385,7 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
                     bundle.keySet().forEach {
                         when (it) {
                             "groupName" -> tvName.text = item.groupName
-                            "cover" -> ivCover.load(item.cover)
+                            "cover" -> ivCover.load(item)
                         }
                     }
                 }

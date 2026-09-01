@@ -81,6 +81,8 @@ fun ReadRecordScreen(
 
     var showMergeDialog by remember { mutableStateOf(false) }
     var selectedRecord by remember { mutableStateOf<ReadRecord?>(null) }
+    var showMergeAllDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     if (showDeleteConfirm && pendingDeleteAction != null) {
         AlertDialog(
@@ -156,6 +158,38 @@ fun ReadRecordScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showMergeDialog = false }) {
+                    Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.onSurface)
+                }
+            }
+        )
+    }
+
+    if (showMergeAllDialog) {
+        AlertDialog(
+            onDismissRequest = { showMergeAllDialog = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text(stringResource(R.string.rr_merge_all_same_name)) },
+            text = { Text(stringResource(R.string.rr_merge_all_confirm)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.mergeAllSameNameRecords { mergedCount ->
+                        android.widget.Toast.makeText(
+                            context,
+                            if (mergedCount > 0) {
+                                context.getString(R.string.rr_merge_all_done, mergedCount)
+                            } else {
+                                context.getString(R.string.rr_merge_all_none)
+                            },
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    showMergeAllDialog = false
+                }) {
+                    Text(stringResource(R.string.rr_merge), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMergeAllDialog = false }) {
                     Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.onSurface)
                 }
             }
@@ -285,6 +319,21 @@ fun ReadRecordScreen(
                                         )
                                     }
                                 )
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(stringResource(R.string.rr_merge_all_same_name))
+                                    },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        showMergeAllDialog = true
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.MergeType,
+                                            contentDescription = null
+                                        )
+                                    }
+                                )
                             }
                         }
                     },
@@ -372,9 +421,12 @@ fun ReadRecordScreen(
                     item {
                         SummaryCard(
                             totalReadTime = state.totalReadTime,
-                            bookCount = state.latestRecords.size,
-                            latestRecords = state.latestRecords,
-                            viewModel = viewModel
+                            todayReadTime = state.todayReadTime,
+                            monthReadTime = state.monthReadTime,
+                            activeDays = state.activeDays,
+                            currentStreak = state.currentStreak,
+                            longestStreak = state.longestStreak,
+                            bookCount = state.latestRecords.size
                         )
                     }
 
@@ -396,6 +448,23 @@ fun ReadRecordScreen(
                             showMergeDialog = true
                         }
                     )
+                }
+            }
+
+            // Timeline 模式：滚动接近底部时自动加载更多
+            val shouldLoadMore = remember {
+                derivedStateOf {
+                    displayMode == DisplayMode.TIMELINE &&
+                        state.timelineHasMore &&
+                        !state.timelineLoadingMore &&
+                        listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index != null &&
+                        listState.layoutInfo.visibleItemsInfo.lastOrNull()!!.index >=
+                            listState.layoutInfo.totalItemsCount - 5
+                }
+            }
+            LaunchedEffect(shouldLoadMore.value) {
+                if (shouldLoadMore.value) {
+                    viewModel.loadMoreTimelineSessions()
                 }
             }
         }
@@ -467,10 +536,20 @@ private fun BookCoverImage(
 
 private suspend fun loadReadRecordCoverBitmap(context: android.content.Context, coverPath: String?): Bitmap? {
     if (coverPath.isNullOrBlank()) return null
-    return suspendCancellableCoroutine { cont ->
+    // 在协程仍存活时（页面未销毁）先取得 RequestManager，取消时复用；
+    // 若在 invokeOnCancellation 里调用 Glide.with(context)，页面可能已 destroy，
+    // Glide 会抛 "You cannot start a load for a destroyed activity" 导致整个应用崩溃
+    val requestManager = com.bumptech.glide.Glide.with(context)
+    return suspendCancellableCoroutine<Bitmap?> { cont ->
+        // Glide 不保证回调顺序，onResourceReady 和 onLoadFailed 可能被先后调用
+        // （Activity 从后台恢复时 Glide 会重新调度资源），
+        // 用 AtomicBoolean 保证 resume 只执行一次，避免 "Already resumed" 崩溃
+        val resumed = java.util.concurrent.atomic.AtomicBoolean(false)
         val target = object : CustomTarget<Bitmap>() {
             override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap>?) {
-                cont.resume(resource)
+                if (resumed.compareAndSet(false, true) && cont.isActive) {
+                    cont.resume(resource)
+                }
             }
 
             override fun onLoadCleared(placeholder: Drawable?) {
@@ -478,11 +557,15 @@ private suspend fun loadReadRecordCoverBitmap(context: android.content.Context, 
             }
 
             override fun onLoadFailed(errorDrawable: Drawable?) {
-                cont.resume(null)
+                if (resumed.compareAndSet(false, true) && cont.isActive) {
+                    cont.resume(null)
+                }
             }
         }
         cont.invokeOnCancellation {
-            com.bumptech.glide.Glide.with(context).clear(target)
+            // 取消回调可能发生在 Activity 销毁流程中，必须吞掉一切异常，
+            // 否则会以 CompletionHandlerException 的形式击杀进程
+            runCatching { requestManager.clear(target) }
         }
         ImageLoader.loadBitmap(context, coverPath)
             .into(target)
@@ -562,6 +645,23 @@ private fun LazyListScope.RecordListContent(
                     }
                 }
             }
+            // 分页加载指示器
+            if (state.timelineLoadingMore) {
+                item(key = "timeline_loading_more") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
         }
         DisplayMode.LATEST -> {
             items(items = state.latestRecords, key = { latestRecordKey(it) }) { record ->
@@ -627,6 +727,7 @@ private fun readTimeRecordKey(record: ReadRecord): String {
 
 @Composable
 private fun DateHeader(date: String, totalDuration: Long) {
+    val context = LocalContext.current
     val headerColor = readRecordHeaderContainerColor()
     val secondaryTextColor = readRecordSecondaryTextColor()
     val todayStr = stringResource(R.string.rr_today)
@@ -651,7 +752,7 @@ private fun DateHeader(date: String, totalDuration: Long) {
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = formatReadDuration(totalDuration),
+                text = formatReadDuration(context,totalDuration),
                 style = MaterialTheme.typography.bodySmall,
                 color = secondaryTextColor
             )
@@ -661,6 +762,7 @@ private fun DateHeader(date: String, totalDuration: Long) {
 
 @Composable
 private fun TimelineDateHeader(date: String, totalDuration: Long) {
+    val context = LocalContext.current
     val headerColor = readRecordHeaderContainerColor()
     val secondaryTextColor = readRecordSecondaryTextColor()
     val todayStr = stringResource(R.string.rr_today)
@@ -685,7 +787,7 @@ private fun TimelineDateHeader(date: String, totalDuration: Long) {
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = formatReadDuration(totalDuration),
+                text = formatReadDuration(context,totalDuration),
                 style = MaterialTheme.typography.bodySmall,
                 color = secondaryTextColor
             )
@@ -705,6 +807,7 @@ private fun TimelineSessionView(
     onLongClick: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val context = LocalContext.current
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val startTime = timeFormat.format(Date(session.startTime))
     val timelineAccentColor = readRecordTimelineAccentColor()
@@ -888,7 +991,7 @@ private fun TimelineSessionView(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = session.bookAuthor.ifBlank { "未知作者" },
+                            text = session.bookAuthor.ifBlank { context.getString(R.string.rr_unknown_author) },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -919,6 +1022,7 @@ private fun RecordDetailItem(
     onLongClick: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val context = LocalContext.current
     val deleteAction = rememberSwipeDeleteAction(onDelete)
     var chapterTitle by remember { mutableStateOf<String?>(null) }
     val containerColor = readRecordCardContainerColor()
@@ -988,7 +1092,7 @@ private fun RecordDetailItem(
                 }
                 
                 Text(
-                    text = formatReadDuration(detail.readTime),
+                    text = formatReadDuration(context,detail.readTime),
                     style = MaterialTheme.typography.bodySmall,
                     color = secondaryTextColor
                 )
@@ -1037,7 +1141,7 @@ private fun RecordDetailItem(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = detail.bookAuthor.ifBlank { "未知作者" },
+                            text = detail.bookAuthor.ifBlank { context.getString(R.string.rr_unknown_author) },
                             style = MaterialTheme.typography.bodySmall,
                             color = secondaryTextColor
                         )
@@ -1053,7 +1157,7 @@ private fun RecordDetailItem(
                     }
                     
                     Text(
-                        text = formatReadDuration(detail.readTime),
+                        text = formatReadDuration(context,detail.readTime),
                         style = MaterialTheme.typography.bodySmall,
                         color = secondaryTextColor
                     )
@@ -1075,6 +1179,7 @@ private fun LatestRecordItem(
     onDelete: () -> Unit,
     onMerge: () -> Unit
 ) {
+    val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
     var chapterTitle by remember { mutableStateOf<String?>(null) }
     val containerColor = readRecordCardContainerColor()
@@ -1147,7 +1252,7 @@ private fun LatestRecordItem(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = formatReadDuration(record.readTime),
+                        text = formatReadDuration(context,record.readTime),
                         style = MaterialTheme.typography.bodySmall,
                         color = secondaryTextColor
                     )
@@ -1166,7 +1271,7 @@ private fun LatestRecordItem(
             if (!isSelectionMode) {
                 Box {
                     IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "更多", tint = readRecordMutedIconTint())
+                        Icon(Icons.Default.MoreVert, contentDescription = context.getString(R.string.rr_more), tint = readRecordMutedIconTint())
                     }
                     DropdownMenu(
                         expanded = showMenu,
@@ -1211,6 +1316,7 @@ private fun ReadTimeRecordItem(
     onLongClick: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val context = LocalContext.current
     var chapterTitle by remember { mutableStateOf<String?>(null) }
     val containerColor = readRecordCardContainerColor()
     val border = readRecordCardBorder()
@@ -1265,7 +1371,7 @@ private fun ReadTimeRecordItem(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = record.bookAuthor.ifBlank { "未知作者" },
+                        text = record.bookAuthor.ifBlank { context.getString(R.string.rr_unknown_author) },
                         style = MaterialTheme.typography.bodySmall,
                         color = secondaryTextColor
                     )
@@ -1281,7 +1387,7 @@ private fun ReadTimeRecordItem(
                 }
 
                 Text(
-                    text = formatReadDuration(record.readTime),
+                    text = formatReadDuration(context,record.readTime),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -1331,7 +1437,7 @@ private fun ReadTimeRecordItem(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = record.bookAuthor.ifBlank { "未知作者" },
+                            text = record.bookAuthor.ifBlank { context.getString(R.string.rr_unknown_author) },
                             style = MaterialTheme.typography.bodySmall,
                             color = secondaryTextColor
                         )
@@ -1347,7 +1453,7 @@ private fun ReadTimeRecordItem(
                     }
 
                     Text(
-                        text = formatReadDuration(record.readTime),
+                        text = formatReadDuration(context,record.readTime),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface

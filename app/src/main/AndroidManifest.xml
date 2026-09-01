@@ -294,6 +294,11 @@
             android:name=".ui.book.manage.BookshelfManageActivity"
             android:launchMode="singleTop"
             android:screenOrientation="behind" />
+        <!-- 书架标签管理 -->
+        <activity
+            android:name=".ui.main.bookshelf.BookshelfTagManageActivity"
+            android:launchMode="singleTask"
+            android:screenOrientation="behind" />
         <!-- 书源调试 -->
         <activity
             android:name=".ui.book.source.debug.BookSourceDebugActivity"
@@ -396,6 +401,11 @@
         <!-- 调试工具 -->
         <activity
             android:name=".ui.debug.DebugToolsActivity"
+            android:configChanges="orientation|screenSize"
+            android:hardwareAccelerated="true" />
+        <!-- 权限管理 -->
+        <activity
+            android:name=".ui.permission.PermissionManageActivity"
             android:configChanges="orientation|screenSize"
             android:hardwareAccelerated="true" />
         <!-- URL访问记录 -->
@@ -596,6 +606,10 @@
                 <data android:pathAdvancedPattern=".*\\.[zZ][iI][pP]" />
                 <data android:pathPattern=".*\\.zip" />
                 <data android:pathPattern=".*\\.ZIP" />
+                <!-- red (Reeden 阅读 App 主题包格式) -->
+                <data android:pathAdvancedPattern=".*\\.[rR][eE][dD]" />
+                <data android:pathPattern=".*\\.red" />
+                <data android:pathPattern=".*\\.RED" />
                 <!-- rar -->
                 <data android:pathAdvancedPattern=".*\\.[rR][aA][rR]" />
                 <data android:pathPattern=".*\\.rar" />
